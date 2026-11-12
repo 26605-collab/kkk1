@@ -1,0 +1,1716 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GOD FIELD: 신들의 전장 - 턴제 카드 배틀</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --gold-light: #fde68a;
+            --gold-mid: #d97706;
+            --gold-dark: #78350f;
+            --bg-felt: #141821;
+        }
+
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background: radial-gradient(ellipse at center, #1e2433 0%, #0d1017 100%);
+            color: #f3f4f6;
+            overflow-x: hidden;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .fantasy-font {
+            font-family: 'Cinzel', 'Noto Sans KR', serif;
+        }
+
+        /* 고전 판타지 카드 테이블 질감 */
+        .table-felt {
+            background: 
+                radial-gradient(circle at 50% 45%, rgba(217, 119, 6, 0.08) 0%, transparent 65%),
+                repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 2px, transparent 2px, transparent 6px),
+                linear-gradient(180deg, #161b26 0%, #0f131a 100%);
+            box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.85);
+        }
+
+        /* 금장 패널 테두리 */
+        .gold-panel {
+            background: linear-gradient(180deg, rgba(30, 36, 51, 0.92) 0%, rgba(19, 23, 34, 0.96) 100%);
+            border: 1px solid rgba(217, 119, 6, 0.45);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(253, 230, 138, 0.15);
+        }
+
+        /* 카드 디자인 및 속성별 테두리 */
+        .game-card {
+            width: 112px;
+            height: 158px;
+            border-radius: 10px;
+            background: linear-gradient(145deg, #272e3f 0%, #171c26 100%);
+            border: 2px solid #4b5563;
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.55);
+            transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        @media (min-width: 640px) {
+            .game-card {
+                width: 126px;
+                height: 176px;
+            }
+        }
+
+        .game-card.playable {
+            cursor: pointer;
+            border-color: rgba(251, 191, 36, 0.6);
+        }
+
+        .game-card.playable:hover {
+            transform: translateY(-14px) scale(1.05);
+            box-shadow: 0 14px 26px rgba(245, 158, 11, 0.35), 0 0 12px rgba(251, 191, 36, 0.4);
+            z-index: 20;
+        }
+
+        .game-card.selected {
+            transform: translateY(-18px) scale(1.07) !important;
+            border-color: #fbbf24 !important;
+            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.5), 0 16px 30px rgba(245, 158, 11, 0.5) !important;
+            z-index: 25;
+        }
+
+        .game-card.disabled-card {
+            opacity: 0.42;
+            filter: grayscale(0.65);
+            cursor: not-allowed;
+        }
+
+        /* 속성별 카드 글로우 */
+        .elem-fire { border-color: #ef4444; background: linear-gradient(155deg, #3b1818 0%, #1a1215 100%); }
+        .elem-ice { border-color: #38bdf8; background: linear-gradient(155deg, #132f42 0%, #111824 100%); }
+        .elem-thunder { border-color: #eab308; background: linear-gradient(155deg, #383012 0%, #191812 100%); }
+        .elem-light { border-color: #fef08a; background: linear-gradient(155deg, #3d381e 0%, #1c1b15 100%); }
+        .elem-dark { border-color: #a855f7; background: linear-gradient(155deg, #2d1842 0%, #16111f 100%); }
+        .elem-none { border-color: #9ca3af; background: linear-gradient(155deg, #29303d 0%, #171b24 100%); }
+
+        /* 카드 뒷면 패턴 */
+        .card-back {
+            width: 30px;
+            height: 44px;
+            border-radius: 5px;
+            background: repeating-linear-gradient(45deg, #78350f 0px, #78350f 4px, #92400e 4px, #92400e 8px);
+            border: 1.5px solid #fbbf24;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        /* 화면 흔들림 & 타격 이펙트 애니메이션 */
+        @keyframes shakeHard {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            15% { transform: translate(-8px, 4px) rotate(-1deg); }
+            30% { transform: translate(8px, -4px) rotate(1deg); }
+            45% { transform: translate(-6px, -3px) rotate(-0.5deg); }
+            60% { transform: translate(6px, 3px) rotate(0.5deg); }
+            75% { transform: translate(-3px, 2px); }
+        }
+        .animate-shake {
+            animation: shakeHard 0.42s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes floatDamage {
+            0% { opacity: 0; transform: translateY(15px) scale(0.7); }
+            20% { opacity: 1; transform: translateY(-5px) scale(1.25); }
+            80% { opacity: 1; transform: translateY(-28px) scale(1); }
+            100% { opacity: 0; transform: translateY(-42px) scale(0.9); }
+        }
+        .damage-popup {
+            animation: floatDamage 1.2s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes cardEnter {
+            from { opacity: 0; transform: scale(0.8) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-card-enter {
+            animation: cardEnter 0.28s ease-out forwards;
+        }
+
+        /* 커스텀 스크롤바 (전투 로그 & 손패) */
+        ::-webkit-scrollbar { width: 5px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 19, 26, 0.6); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: rgba(217, 119, 6, 0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.8); }
+
+        /* 버튼 스타일 */
+        .btn-fantasy {
+            background: linear-gradient(180deg, #b45309 0%, #78350f 100%);
+            border: 1px solid #f59e0b;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(254, 243, 199, 0.3);
+            transition: all 0.15s ease;
+        }
+        .btn-fantasy:hover:not(:disabled) {
+            background: linear-gradient(180deg, #d97706 0%, #92400e 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 14px rgba(245, 158, 11, 0.35);
+        }
+        .btn-fantasy:active:not(:disabled) { transform: translateY(1px); }
+        .btn-fantasy:disabled { opacity: 0.4; cursor: not-allowed; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col table-felt">
+
+    <!-- 상단 네비게이션 바 -->
+    <header class="w-full px-3 sm:px-6 py-2.5 bg-slate-950/85 border-b border-amber-500/30 flex items-center justify-between z-30">
+        <div class="flex items-center gap-2.5">
+            <span class="text-2xl">⚜️</span>
+            <div>
+                <h1 class="fantasy-font text-lg sm:text-xl font-extrabold tracking-wider text-amber-300 leading-none">
+                    GOD FIELD
+                </h1>
+                <p class="text-[10px] sm:text-xs text-amber-500/80">신들의 턴제 카드 배틀</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- 대전 인원 선택 -->
+            <select id="playerCountSelect" class="bg-slate-900 border border-amber-500/40 text-amber-200 text-xs sm:text-sm rounded-lg px-2.5 py-1.5 focus:outline-none">
+                <option value="2">1 vs 1 결투 (2인)</option>
+                <option value="3">1 vs 2 난투 (3인)</option>
+                <option value="4">1 vs 3 대난투 (4인)</option>
+            </select>
+
+            <button id="helpBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs sm:text-sm text-amber-200 transition">
+                📖 규칙/상성
+            </button>
+            <button id="soundBtn" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs sm:text-sm text-amber-300 transition">
+                🔊
+            </button>
+            <button id="newGameBtn" class="btn-fantasy px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold text-white">
+                새 게임
+            </button>
+        </div>
+    </header>
+
+    <!-- 메인 게임 보드 컨테이너 -->
+    <main id="gameBoard" class="flex-1 w-full max-w-6xl mx-auto p-2.5 sm:p-4 flex flex-col justify-between gap-2.5 sm:gap-3 relative">
+
+        <!-- 1. 상단 영역: 상대방 AI 플레이어 상태 카드들 -->
+        <section id="opponentsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 justify-center">
+            <!-- JS로 동적 렌더링 -->
+        </section>
+
+        <!-- 2. 중앙 영역: 전장(출전 카드 비교 & 대미지 계산) + 실시간 전투 로그 -->
+        <section class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-3 min-h-[230px] sm:min-h-[260px]">
+            
+            <!-- 중앙 전장 스테이지 (8칸) -->
+            <div id="arenaStage" class="lg:col-span-8 gold-panel rounded-2xl p-3 sm:p-4 flex flex-col justify-between relative overflow-hidden">
+                <!-- 현재 페이즈 및 턴 안내 배너 -->
+                <div class="flex items-center justify-between border-b border-amber-500/20 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span id="turnBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-600 text-white">1턴</span>
+                        <span id="phaseTitle" class="text-sm sm:text-base font-bold text-amber-200">당신의 턴 - 카드를 선택하세요</span>
+                    </div>
+                    <div id="targetSelectorArea" class="hidden flex items-center gap-1.5">
+                        <span class="text-xs text-slate-400">대상:</span>
+                        <div id="targetButtons" class="flex gap-1"></div>
+                    </div>
+                </div>
+
+                <!-- 전장 카드 대결 디스플레이 -->
+                <div id="battleDisplay" class="flex-1 flex flex-col sm:flex-row items-center justify-around gap-3 py-2 my-auto relative">
+                    <!-- 대기 상태 안내 -->
+                    <div id="arenaPlaceholder" class="text-center text-slate-400/80 py-6">
+                        <div class="text-3xl mb-1 opacity-60">⚔️🛡️✨</div>
+                        <p class="text-xs sm:text-sm">손패에서 무기, 기적, 또는 잡화 카드를 선택하여 전장에 내보내세요.</p>
+                        <p class="text-[11px] text-slate-500 mt-1">방어 시에는 방어구 카드를 조합해 피해를 경감하거나 반사할 수 있습니다.</p>
+                    </div>
+
+                    <!-- 공격 측 출전 영역 -->
+                    <div id="attackerStage" class="hidden flex flex-col items-center">
+                        <span id="attackerStageLabel" class="text-xs font-bold text-rose-400 mb-1.5">⚔️ 공격 출전</span>
+                        <div id="attackerCardsSlot" class="flex items-center justify-center gap-2 flex-wrap"></div>
+                        <div id="attackSummaryText" class="mt-1.5 text-xs sm:text-sm font-bold text-amber-300 bg-slate-950/70 px-3 py-0.5 rounded-full border border-amber-500/30"></div>
+                    </div>
+
+                    <!-- VS / 계산 아이콘 -->
+                    <div id="vsDivider" class="hidden flex flex-col items-center justify-center">
+                        <span class="fantasy-font text-xl sm:text-2xl font-black text-amber-500 drop-shadow">VS</span>
+                        <span id="clashResultBadge" class="text-[11px] text-slate-300 mt-0.5 text-center"></span>
+                    </div>
+
+                    <!-- 방어 측 출전 영역 -->
+                    <div id="defenderStage" class="hidden flex flex-col items-center">
+                        <span id="defenderStageLabel" class="text-xs font-bold text-sky-400 mb-1.5">🛡️ 방어 태세</span>
+                        <div id="defenderCardsSlot" class="flex items-center justify-center gap-2 flex-wrap"></div>
+                        <div id="defenseSummaryText" class="mt-1.5 text-xs sm:text-sm font-bold text-sky-300 bg-slate-950/70 px-3 py-0.5 rounded-full border border-sky-500/30"></div>
+                    </div>
+                </div>
+
+                <!-- 액션 컨트롤 버튼 바 -->
+                <div id="actionControls" class="flex flex-wrap items-center justify-center gap-2 pt-2 border-t border-amber-500/20">
+                    <!-- 상황별로 동적 버튼 표시 (공격 확정, 방어 완료, 그대로 받기, 턴 종료 등) -->
+                </div>
+            </div>
+
+            <!-- 우측 실시간 전투 로그 (4칸) -->
+            <div class="lg:col-span-4 gold-panel rounded-2xl p-3 flex flex-col h-44 lg:h-auto">
+                <div class="flex items-center justify-between border-b border-amber-500/20 pb-1.5 mb-2">
+                    <span class="text-xs font-bold text-amber-300 flex items-center gap-1">📜 전장의 기록 (전투 로그)</span>
+                    <span id="deckCountBadge" class="text-[11px] text-slate-400">덱: 무한 소환</span>
+                </div>
+                <div id="battleLog" class="flex-1 overflow-y-auto space-y-1.5 text-xs pr-1 leading-relaxed">
+                    <!-- 로그 메시지 누적 -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 하단 영역: 플레이어 상태 바 & 손패 카드 영역 -->
+        <section id="playerArea" class="gold-panel rounded-2xl p-3 sm:p-4 relative">
+            <!-- 플레이어 스탯 및 상태이상 -->
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-amber-500/25">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-amber-700 flex items-center justify-center text-lg shadow border border-amber-200">
+                        👑
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-sm sm:text-base text-amber-200">나 (예언자)</span>
+                            <div id="playerStatusBadges" class="flex items-center gap-1"></div>
+                        </div>
+                        <span id="handLimitText" class="text-[11px] text-slate-400">손패: 0 / 8장 (턴 종료 시 8장 초과분 자동 폐기)</span>
+                    </div>
+                </div>
+
+                <!-- HP / MP / GOLD 게이지 -->
+                <div class="flex items-center gap-3 sm:gap-5 bg-slate-950/75 px-3.5 py-1.5 rounded-xl border border-slate-700/80">
+                    <div class="flex items-center gap-1.5" title="생명력 (0이 되면 패배)">
+                        <span class="text-rose-500 text-sm">❤️</span>
+                        <span class="text-xs text-slate-400">HP</span>
+                        <span id="playerHp" class="font-mono font-bold text-sm sm:text-base text-rose-400">40</span>
+                    </div>
+                    <div class="w-px h-4 bg-slate-700"></div>
+                    <div class="flex items-center gap-1.5" title="마나 (기적 및 특수 무기 사용)">
+                        <span class="text-sky-400 text-sm">💧</span>
+                        <span class="text-xs text-slate-400">MP</span>
+                        <span id="playerMp" class="font-mono font-bold text-sm sm:text-base text-sky-400">10</span>
+                    </div>
+                    <div class="w-px h-4 bg-slate-700"></div>
+                    <div class="flex items-center gap-1.5" title="금화 (거래 및 강매 방어/공격)">
+                        <span class="text-amber-400 text-sm">🪙</span>
+                        <span class="text-xs text-slate-400">G</span>
+                        <span id="playerGold" class="font-mono font-bold text-sm sm:text-base text-amber-300">20</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 카드 호버 상세 툴팁 바 -->
+            <div id="cardTooltipBar" class="min-h-[26px] mb-2 px-3 py-1 rounded-lg bg-slate-950/80 border border-amber-500/20 flex items-center justify-between text-xs">
+                <span id="tooltipContent" class="text-slate-300">💡 카드에 마우스를 올리거나 터치하면 상세 능력치와 속성 상성을 확인할 수 있습니다.</span>
+                <span id="tooltipElementTag" class="hidden px-2 py-0.5 rounded text-[11px] font-bold"></span>
+            </div>
+
+            <!-- 플레이어 손패 카드 목록 -->
+            <div id="playerHandContainer" class="flex items-center gap-2 sm:gap-2.5 overflow-x-auto pt-4 pb-2 px-1 min-h-[180px] sm:min-h-[198px]">
+                <!-- 카드 요소 동적 생성 -->
+            </div>
+        </section>
+
+        <!-- 게임 종료 결과 모달 -->
+        <div id="gameOverModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div class="gold-panel rounded-2xl p-6 sm:p-8 max-w-md w-full text-center animate-card-enter border-2 border-amber-400">
+                <div id="gameOverIcon" class="text-5xl mb-3">🏆</div>
+                <h2 id="gameOverTitle" class="fantasy-font text-2xl sm:text-3xl font-extrabold text-amber-300 mb-2">승리했습니다!</h2>
+                <p id="gameOverDesc" class="text-sm text-slate-300 mb-6 leading-relaxed">모든 경쟁자를 쓰러뜨리고 신들의 전장을 제패했습니다.</p>
+                <button id="modalRestartBtn" class="btn-fantasy w-full py-3 rounded-xl font-bold text-base text-white">
+                    새로운 전장 시작하기
+                </button>
+            </div>
+        </div>
+
+        <!-- 게임 규칙 및 상성 도움말 모달 -->
+        <div id="helpModal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div class="gold-panel rounded-2xl p-5 sm:p-6 max-w-2xl w-full max-h-[85vh] overflow-y-auto text-left">
+                <div class="flex items-center justify-between border-b border-amber-500/30 pb-3 mb-4">
+                    <h2 class="fantasy-font text-xl font-bold text-amber-300">⚜️ GOD FIELD 게임 규칙 및 속성 가이드</h2>
+                    <button id="closeHelpBtn" class="text-slate-400 hover:text-white text-xl font-bold px-2">✕</button>
+                </div>
+                
+                <div class="space-y-4 text-xs sm:text-sm text-slate-200 leading-relaxed">
+                    <div>
+                        <h3 class="font-bold text-amber-400 mb-1">1. 기본 진행</h3>
+                        <p>• 모든 플레이어는 <b>HP 40, MP 10, 금화 20G, 손패 7장</b>으로 시작합니다.</p>
+                        <p>• 자신의 턴이 시작되면 카드를 <b>1장 드로우</b>하며, 턴 종료 시 손패가 8장을 초과하면 오래된 카드가 자동 폐기됩니다.</p>
+                        <p>• <b>무기 + 보조 강화 카드(예: 불꽃의 부적, 쌍격의 반지)</b>를 함께 선택하여 강력한 콤보 공격을 가할 수 있습니다.</p>
+                    </div>
+
+                    <div>
+                        <h3 class="font-bold text-amber-400 mb-1">2. 카드 유형</h3>
+                        <ul class="list-disc pl-5 space-y-1">
+                            <li><b>⚔️ 무기:</b> 기본 공격 수단. 일부 무기는 MP를 소모하거나 흡혈/관통 효과를 가집니다.</li>
+                            <li><b>🛡️ 방어구:</b> 상대의 공격을 받을 때 여러 장 조합해 내어 피해를 방어력(DEF)만큼 경감하거나, <b>반사/회피</b>합니다.</li>
+                            <li><b>✨ 기적(마법):</b> MP를 소모해 방어 불가능한 충격파, 전체 공격, 회복, 상태이상을 부여합니다.</li>
+                            <li><b>🎒 잡화/거래:</b> HP/MP/금화를 회복하거나, 상점에 카드를 팔아 골드를 벌고, 상대에게 물건을 <b>강매</b>해 강제로 금화를 뺏습니다.</li>
+                        </ul>
+                    </div>
+
+                    <div>
+                        <h3 class="font-bold text-amber-400 mb-1">3. 속성 상성 규칙</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-950/70 p-3 rounded-xl border border-slate-800">
+                            <div>🔥 <b>화염 ↔ ❄️ 빙결:</b> 서로 상반된 속성 방어구로 막으면 방어 효율이 <b>1.5배</b>로 증가!</div>
+                            <div>☀️ <b>광명 ↔ 🌑 암흑:</b> 빛과 어둠이 충돌하면 서로 상쇄되어 방어 효율 <b>1.5배</b> 증가!</div>
+                            <div>⚡ <b>뇌전 속성:</b> 일반 금속 방어구를 관통하여 방어구 효율을 <b>50% 감소</b>시킵니다.</div>
+                            <div>⚪ <b>무속성:</b> 모든 방어구가 정직하게 100% 방어력으로 막아냅니다.</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="font-bold text-amber-400 mb-1">4. 상태이상 효과</h3>
+                        <p>• 🔥 <b>화상:</b> 턴 시작 시마다 3의 고정 화염 피해를 입습니다. (3턴 지속)</p>
+                        <p>• ❄️ <b>빙결 / ⚡ 감전:</b> 몸이 굳어 다음 공격 시 방어구 카드를 <b>최대 1장</b>까지만 낼 수 있습니다.</p>
+                        <p>• ☠️ <b>맹독:</b> 턴 시작 시마다 4의 독 피해를 입습니다. (3턴 지속)</p>
+                        <p>• 🕶️ <b>실명:</b> 시야가 가려져 공격 명중률이 50%로 감소합니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        /**
+         * ============================================================================
+         * GOD FIELD (신들의 전장) - 턴제 카드 배틀 엔진
+         * ============================================================================
+         */
+
+        // --- 1. 속성 및 상태이상 정의 ---
+        const ELEMENTS = {
+            NONE:   { id: 'none',    name: '무속성', icon: '⚪', color: 'text-slate-300', badge: 'bg-slate-700 text-slate-200', css: 'elem-none' },
+            FIRE:   { id: 'fire',    name: '화염',   icon: '🔥', color: 'text-rose-400',  badge: 'bg-rose-900/80 text-rose-200', css: 'elem-fire' },
+            ICE:    { id: 'ice',     name: '빙결',   icon: '❄️', color: 'text-sky-400',   badge: 'bg-sky-900/80 text-sky-200',   css: 'elem-ice' },
+            THUNDER:{ id: 'thunder', name: '뇌전',   icon: '⚡', color: 'text-yellow-400',badge: 'bg-yellow-900/80 text-yellow-200', css: 'elem-thunder' },
+            LIGHT:  { id: 'light',   name: '광명',   icon: '☀️', color: 'text-amber-200', badge: 'bg-amber-800/80 text-amber-100', css: 'elem-light' },
+            DARK:   { id: 'dark',    name: '암흑',   icon: '🌑', color: 'text-purple-400',badge: 'bg-purple-900/80 text-purple-200', css: 'elem-dark' }
+        };
+
+        const STATUS_INFO = {
+            burn:  { name: '화상', icon: '🔥', desc: '매 턴 시작 시 HP -3' },
+            shock: { name: '감전', icon: '⚡', desc: '방어 시 카드 1장만 사용 가능' },
+            freeze:{ name: '빙결', icon: '❄️', desc: '방어 시 카드 1장만 사용 가능' },
+            poison:{ name: '맹독', icon: '☠️', desc: '매 턴 시작 시 HP -4' },
+            blind: { name: '실명', icon: '🕶️', desc: '공격 명중률 50% 감소' }
+        };
+
+        // --- 2. 카드 데이터베이스 (다양한 무기, 방어구, 기적, 잡화) ---
+        const CARD_TEMPLATES = [
+            // [무기 카드]
+            { code: 'w_sword', name: '강철의 장검', type: 'weapon', subType: 'melee', element: 'NONE', atk: 6, mpCost: 0, icon: '🗡️', weight: 10,
+              desc: '가장 기본적인 기사단의 장검. 무속성 6 피해를 입힌다.' },
+            { code: 'w_axe', name: '광전사의 전투도끼', type: 'weapon', subType: 'melee', element: 'NONE', atk: 9, mpCost: 0, accuracy: 80, icon: '🪓', weight: 7,
+              desc: '묵직한 일격으로 9 피해를 입히지만 명중률이 80%이다.' },
+            { code: 'w_bow', name: '질풍의 장궁', type: 'weapon', subType: 'ranged', element: 'NONE', atk: 5, mpCost: 0, effect: 'unblockable_shield', icon: '🏹', weight: 7,
+              desc: '방패류 방어구를 무시하고 5의 정밀 사격을 가한다.' },
+            { code: 'w_fire_blade', name: '이프리트의 화염검', type: 'weapon', subType: 'melee', element: 'FIRE', atk: 8, mpCost: 2, applyStatus: 'burn', statusChance: 0.45, icon: '🔥', weight: 6,
+              desc: 'MP 2 소모. 화염 8 피해 및 45% 확률로 [화상]을 부여한다.' },
+            { code: 'w_ice_spear', name: '빙하의 창', type: 'weapon', subType: 'melee', element: 'ICE', atk: 7, mpCost: 2, applyStatus: 'freeze', statusChance: 0.4, icon: '🔱', weight: 6,
+              desc: 'MP 2 소모. 빙결 7 피해 및 40% 확률로 적을 [빙결]시킨다.' },
+            { code: 'w_thunder_hammer', name: '묠니르의 뇌전망치', type: 'weapon', subType: 'melee', element: 'THUNDER', atk: 9, mpCost: 3, applyStatus: 'shock', statusChance: 0.45, icon: '🔨', weight: 5,
+              desc: 'MP 3 소모. 뇌전 9 피해(방어구 효율 반감) + [감전] 부여.' },
+            { code: 'w_holy_lance', name: '성광의 창', type: 'weapon', subType: 'melee', element: 'LIGHT', atk: 10, mpCost: 3, icon: '✨', weight: 4,
+              desc: 'MP 3 소모. 신성한 광명 10 피해를 입힌다.' },
+            { code: 'w_vampire_scythe', name: '흡혈귀의 낫', type: 'weapon', subType: 'melee', element: 'DARK', atk: 7, mpCost: 2, effect: 'lifesteal', icon: '🌙', weight: 5,
+              desc: 'MP 2 소모. 암흑 7 피해를 입히고, 가한 피해만큼 내 HP를 회복한다.' },
+            { code: 'w_twin_dagger', name: '그림자 쌍단검', type: 'weapon', subType: 'melee', element: 'DARK', atk: 4, hits: 2, mpCost: 1, icon: '⚔️', weight: 6,
+              desc: 'MP 1 소모. 4의 피해로 2회 연속 공격(총 8 ATK)한다.' },
+
+            // [공격 보조(플러스) 카드 - 무기와 함께 선택 가능]
+            { code: 'b_fire_gem', name: '홍련의 마석', type: 'booster', element: 'FIRE', bonusAtk: 4, convertElement: 'FIRE', mpCost: 1, icon: '♦️', weight: 6,
+              desc: '[무기 보조] MP 1 소모. 무기에 화염 속성을 부여하고 ATK +4.' },
+            { code: 'b_thunder_scroll', name: '뇌전의 부적', type: 'booster', element: 'THUNDER', bonusAtk: 4, convertElement: 'THUNDER', mpCost: 1, icon: '📜', weight: 6,
+              desc: '[무기 보조] MP 1 소모. 무기에 뇌전 속성을 부여하고 ATK +4.' },
+            { code: 'b_power_ring', name: '투신의 반지', type: 'booster', element: 'NONE', bonusAtk: 5, mpCost: 0, icon: '💍', weight: 5,
+              desc: '[무기 보조] 무기의 공격력을 +5 강화한다.' },
+
+            // [방어구 카드]
+            { code: 'd_wood_shield', name: '참나무 방패', type: 'armor', subType: 'shield', element: 'NONE', def: 5, icon: '🛡️', weight: 10,
+              desc: '기본적인 나무 방패. 물리/속성 피해를 5 방어한다.' },
+            { code: 'd_iron_armor', name: '기사의 판금갑옷', type: 'armor', subType: 'body', element: 'NONE', def: 8, icon: '🦺', weight: 8,
+              desc: '견고한 판금 갑옷. 피해를 8 방어하지만 뇌전 속성에 취약하다.' },
+            { code: 'd_fire_cloak', name: '화염의 망토', type: 'armor', subType: 'cloak', element: 'FIRE', def: 6, icon: '🧣', weight: 7,
+              desc: '화염 방어구. 피해를 6 방어하며, 빙결 공격을 1.5배 효율로 막아낸다.' },
+            { code: 'd_ice_shield', name: '서리 방패', type: 'armor', subType: 'shield', element: 'ICE', def: 6, icon: '💠', weight: 7,
+              desc: '빙결 방어구. 피해를 6 방어하며, 화염 공격을 1.5배 효율로 막아낸다.' },
+            { code: 'd_holy_helm', name: '천사의 투구', type: 'armor', subType: 'helm', element: 'LIGHT', def: 6, icon: '⛑️', weight: 6,
+              desc: '광명 방어구. 피해를 6 방어하며, 암흑 공격을 1.5배 효율로 막아낸다.' },
+            { code: 'd_dark_robe', name: '심연의 로브', type: 'armor', subType: 'cloak', element: 'DARK', def: 6, icon: '🧥', weight: 6,
+              desc: '암흑 방어구. 피해를 6 방어하며, 광명 공격을 1.5배 효율로 막아낸다.' },
+            { code: 'd_mirror_shield', name: '거울 방패', type: 'armor', subType: 'shield', element: 'LIGHT', def: 3, effect: 'reflect', icon: '🪞', weight: 4,
+              desc: '방어 3 + 받은 최종 피해의 50%(올림)를 공격자에게 반사한다!' },
+            { code: 'd_wind_boots', name: '질풍의 장화', type: 'armor', subType: 'boots', element: 'NONE', def: 2, effect: 'evade', icon: '👢', weight: 5,
+              desc: '방어 2 + 55% 확률로 적의 공격을 완전히 회피한다!' },
+
+            // [기적(마법) 카드]
+            { code: 'm_meteor', name: '기적: 메테오', type: 'miracle', element: 'FIRE', atk: 12, mpCost: 5, targetType: 'all', applyStatus: 'burn', statusChance: 0.35, icon: '☄️', weight: 4,
+              desc: '[전체 공격] MP 5 소모. 모든 상대에게 화염 12 피해 + 35% [화상].' },
+            { code: 'm_blizzard', name: '기적: 앱솔루트 제로', type: 'miracle', element: 'ICE', atk: 10, mpCost: 4, targetType: 'single', applyStatus: 'freeze', statusChance: 0.65, icon: '🌨️', weight: 5,
+              desc: '[단일 공격] MP 4 소모. 대상에게 빙결 10 피해 + 65% [빙결].' },
+            { code: 'm_judgement', name: '기적: 천벌의 낙뢰', type: 'miracle', element: 'THUNDER', atk: 13, mpCost: 5, targetType: 'single', icon: '🌩️', weight: 4,
+              desc: '[단일 공격] MP 5 소모. 방어구 효율을 반감시키는 뇌전 13 낙뢰!' },
+            { code: 'm_heal', name: '기적: 성스러운 치유', type: 'miracle', element: 'LIGHT', mpCost: 3, healHp: 12, cleanse: true, icon: '💖', weight: 6,
+              desc: '[자신 회복] MP 3 소모. HP를 12 회복하고 모든 상태이상을 치료한다.' },
+            { code: 'm_curse', name: '기적: 저주의 늪', type: 'miracle', element: 'DARK', mpCost: 3, targetType: 'single', applyStatus: 'poison', statusChance: 0.85, secondaryStatus: 'blind', icon: '☠️', weight: 5,
+              desc: '[단일 저주] MP 3 소모. 상대에게 [맹독]과 [실명]을 동시에 부여한다.' },
+
+            // [잡화 / 거래 / 특수 아이템 카드]
+            { code: 'i_potion', name: '엘릭서 물약', type: 'item', element: 'NONE', healHp: 8, healMp: 4, icon: '🧪', weight: 8,
+              desc: '[소모품] HP 8, MP 4를 즉시 회복한다.' },
+            { code: 'i_mana_crystal', name: '마력의 샘물', type: 'item', element: 'LIGHT', healMp: 8, icon: '🔮', weight: 6,
+              desc: '[소모품] MP를 8 회복한다.' },
+            { code: 'i_gold_bag', name: '황금 주머니', type: 'item', element: 'NONE', gainGold: 10, icon: '💰', weight: 7,
+              desc: '[재물] 금화 10G를 획득한다.' },
+            { code: 'i_sell_gem', name: '고대 왕관 매각', type: 'item', element: 'LIGHT', sellGold: 14, drawCount: 1, icon: '👑', weight: 5,
+              desc: '[상점 거래] 상점에 매각해 금화 14G를 얻고 카드를 1장 드로우한다.' },
+            { code: 'i_extort', name: '악덕 상인의 강매', type: 'item', element: 'DARK', targetType: 'single', extortGold: 8, icon: '⚖️', weight: 5,
+              desc: '[강매] 대상에게 잡동사니를 강매해 8G를 빼앗는다. (금화 부족 시 부족분만큼 HP 피해!)' },
+            { code: 'i_thief', name: '괴도의 장갑', type: 'item', element: 'DARK', targetType: 'single', stealCard: true, icon: '🧤', weight: 5,
+              desc: '[강탈] 대상의 손패에서 무작위 카드 1장을 훔쳐 내 손패로 가져온다.' }
+        ];
+
+        // --- 3. 사운드 시스템 (Web Audio API 합성음) ---
+        let audioCtx = null;
+        let isMuted = false;
+
+        function playSfx(type) {
+            if (isMuted) return;
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                const now = audioCtx.currentTime;
+
+                if (type === 'draw' || type === 'select') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(type === 'draw' ? 520 : 660, now);
+                    osc.frequency.exponentialRampToValueAtTime(880, now + 0.06);
+                    gain.gain.setValueAtTime(0.15, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now); osc.stop(now + 0.075);
+                } else if (type === 'attack') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, now);
+                    osc.frequency.exponentialRampToValueAtTime(55, now + 0.22);
+                    gain.gain.setValueAtTime(0.35, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.24);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now); osc.stop(now + 0.25);
+                } else if (type === 'shield') {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, now);
+                    osc.frequency.setValueAtTime(587.33, now + 0.06);
+                    gain.gain.setValueAtTime(0.25, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.connect(gain); gain.connect(audioCtx.destination);
+                    osc.start(now); osc.stop(now + 0.26);
+                } else if (type === 'magic' || type === 'heal') {
+                    const freqs = type === 'heal' ? [523.25, 659.25, 783.99] : [330, 493.88, 659.25, 987.77];
+                    freqs.forEach((f, idx) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(f, now + idx * 0.05);
+                        gain.gain.setValueAtTime(0.18, now + idx * 0.05);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.28);
+                        osc.connect(gain); gain.connect(audioCtx.destination);
+                        osc.start(now + idx * 0.05); osc.stop(now + idx * 0.05 + 0.3);
+                    });
+                } else if (type === 'win') {
+                    [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => {
+                        const osc = audioCtx.createOscillator();
+                        const gain = audioCtx.createGain();
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(f, now + i * 0.11);
+                        gain.gain.setValueAtTime(0.25, now + i * 0.11);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.11 + 0.4);
+                        osc.connect(gain); gain.connect(audioCtx.destination);
+                        osc.start(now + i * 0.11); osc.stop(now + i * 0.11 + 0.42);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        // --- 4. 게임 상태 전역 변수 ---
+        let players = [];
+        let turnCount = 1;
+        let currentTurnIdx = 0;
+        let phase = 'IDLE'; // 'PLAYER_ACTION', 'PLAYER_DEFEND', 'AI_THINKING', 'RESOLVING', 'GAME_OVER'
+        let selectedCardIds = []; // 플레이어가 현재 선택한 카드들의 고유 uid 배열
+        let selectedTargetId = null; // 단일 공격/아이템 대상 플레이어 id
+        let pendingAttack = null; // 현재 진행 중인 공방 데이터 { attackerId, targetIds, cards, totalAtk, element, hits, ... }
+
+        // --- 5. 유틸리티 함수 ---
+        let uidCounter = 1;
+        function drawRandomCard() {
+            const totalWeight = CARD_TEMPLATES.reduce((sum, c) => sum + c.weight, 0);
+            let r = Math.random() * totalWeight;
+            for (const tpl of CARD_TEMPLATES) {
+                if (r < tpl.weight) {
+                    return { ...tpl, uid: 'card_' + (uidCounter++) };
+                }
+                r -= tpl.weight;
+            }
+            return { ...CARD_TEMPLATES[0], uid: 'card_' + (uidCounter++) };
+        }
+
+        function addLog(msg, colorClass = 'text-slate-300') {
+            const logEl = document.getElementById('battleLog');
+            const entry = document.createElement('div');
+            entry.className = `border-l-2 border-amber-500/40 pl-2 py-0.5 ${colorClass} animate-card-enter`;
+            entry.innerHTML = msg;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function triggerShake() {
+            const board = document.getElementById('gameBoard');
+            board.classList.remove('animate-shake');
+            void board.offsetWidth;
+            board.classList.add('animate-shake');
+        }
+
+        function showFloatingText(targetPlayerId, text, color = 'text-rose-400') {
+            const container = targetPlayerId === 0 
+                ? document.getElementById('playerArea') 
+                : document.getElementById(`opp-card-${targetPlayerId}`);
+            if (!container) return;
+
+            const popup = document.createElement('div');
+            popup.className = `damage-popup absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-black text-2xl sm:text-3xl drop-shadow-[0_2px_6px_rgba(0,0,0,0.9)] z-40 ${color}`;
+            popup.textContent = text;
+            container.appendChild(popup);
+            setTimeout(() => popup.remove(), 1250);
+        }
+
+        // --- 6. 게임 초기화 및 시작 ---
+        function startNewGame() {
+            const count = parseInt(document.getElementById('playerCountSelect').value, 10);
+            const aiProfiles = [
+                { name: '불꽃의 마도사', avatar: '🧙‍♂️' },
+                { name: '빙결의 발키리', avatar: '🧝‍♀️' },
+                { name: '암흑의 사신',   avatar: '🧛' }
+            ];
+
+            players = [];
+            // 0번: 인간 플레이어
+            players.push({
+                id: 0,
+                name: '나 (예언자)',
+                avatar: '👑',
+                isAI: false,
+                hp: 40,
+                maxHp: 50,
+                mp: 10,
+                maxMp: 30,
+                gold: 20,
+                hand: [],
+                statuses: {}, // { burn: 2, ... }
+                alive: true
+            });
+
+            // 1 ~ count-1번: AI 플레이어
+            for (let i = 1; i < count; i++) {
+                players.push({
+                    id: i,
+                    name: aiProfiles[i - 1].name,
+                    avatar: aiProfiles[i - 1].avatar,
+                    isAI: true,
+                    hp: 40,
+                    maxHp: 50,
+                    mp: 10,
+                    maxMp: 30,
+                    gold: 20,
+                    hand: [],
+                    statuses: {},
+                    alive: true
+                });
+            }
+
+            // 초기 손패 7장 지급 (최소 1장의 무기와 1장의 방어구 보장)
+            players.forEach(p => {
+                p.hand = [];
+                for (let k = 0; k < 7; k++) {
+                    p.hand.push(drawRandomCard());
+                }
+                if (!p.hand.some(c => c.type === 'weapon')) {
+                    p.hand[0] = { ...CARD_TEMPLATES[0], uid: 'card_' + (uidCounter++) };
+                }
+                if (!p.hand.some(c => c.type === 'armor')) {
+                    p.hand[1] = { ...CARD_TEMPLATES[12], uid: 'card_' + (uidCounter++) };
+                }
+            });
+
+            turnCount = 1;
+            currentTurnIdx = 0;
+            selectedCardIds = [];
+            selectedTargetId = null;
+            pendingAttack = null;
+
+            document.getElementById('battleLog').innerHTML = '';
+            document.getElementById('gameOverModal').classList.add('hidden');
+            resetArenaVisuals();
+
+            addLog(`⚜️ <b>새로운 신들의 전장</b>이 열렸습니다! (${count}인 대전)`, 'text-amber-300');
+            startTurn(0);
+        }
+
+        function resetArenaVisuals() {
+            document.getElementById('arenaPlaceholder').classList.remove('hidden');
+            document.getElementById('attackerStage').classList.add('hidden');
+            document.getElementById('vsDivider').classList.add('hidden');
+            document.getElementById('defenderStage').classList.add('hidden');
+            document.getElementById('targetSelectorArea').classList.add('hidden');
+        }
+
+        // --- 7. 턴 시작 및 상태이상 처리 ---
+        function startTurn(playerIdx) {
+            const p = players[playerIdx];
+            if (!p.alive) {
+                advanceTurn();
+                return;
+            }
+
+            currentTurnIdx = playerIdx;
+            selectedCardIds = [];
+            pendingAttack = null;
+
+            // 살아있는 첫 번째 적을 기본 타겟으로 설정
+            const aliveEnemies = players.filter(other => other.id !== p.id && other.alive);
+            selectedTargetId = aliveEnemies.length > 0 ? aliveEnemies[0].id : null;
+
+            addLog(`─── <b>[${turnCount}턴] ${p.name}</b>의 차례 ───`, 'text-amber-200/90');
+
+            // 1) 상태이상 지속 효과 처리 (화상, 맹독)
+            if (p.statuses.burn) {
+                p.hp = Math.max(0, p.hp - 3);
+                p.statuses.burn--;
+                if (p.statuses.burn <= 0) delete p.statuses.burn;
+                addLog(`🔥 <b>${p.name}</b>이(가) [화상]으로 <b>3</b>의 피해를 입었습니다!`, 'text-rose-400');
+                showFloatingText(p.id, '-3 🔥', 'text-rose-500');
+            }
+            if (p.statuses.poison) {
+                p.hp = Math.max(0, p.hp - 4);
+                p.statuses.poison--;
+                if (p.statuses.poison <= 0) delete p.statuses.poison;
+                addLog(`☠️ <b>${p.name}</b>이(가) [맹독]으로 <b>4</b>의 피해를 입었습니다!`, 'text-purple-400');
+                showFloatingText(p.id, '-4 ☠️', 'text-purple-400');
+            }
+
+            // 상태이상으로 사망 체크
+            if (checkEliminations()) return;
+
+            // 2) 턴 시작 카드 1장 드로우 (최대 9장까지 일시 보유, 턴 종료 시 8장 제한)
+            const drawn = drawRandomCard();
+            p.hand.push(drawn);
+            if (!p.isAI) {
+                playSfx('draw');
+                addLog(`🃏 카드를 1장 뽑았습니다: <b>[${drawn.name}]</b>`, 'text-sky-300');
+            } else {
+                addLog(`🃏 <b>${p.name}</b>이(가) 카드를 1장 드로우했습니다.`, 'text-slate-400');
+            }
+
+            resetArenaVisuals();
+
+            if (p.isAI) {
+                phase = 'AI_THINKING';
+                renderAll();
+                setTimeout(() => executeAiTurn(p), 950);
+            } else {
+                phase = 'PLAYER_ACTION';
+                renderAll();
+            }
+        }
+
+        function endTurn(playerIdx) {
+            const p = players[playerIdx];
+            // 손패 상한(8장) 초과 시 가장 오래된 카드 자동 폐기
+            while (p.hand.length > 8) {
+                const discarded = p.hand.shift();
+                if (!p.isAI) {
+                    addLog(`🗑️ 손패가 8장을 초과하여 <b>[${discarded.name}]</b> 카드를 버렸습니다.`, 'text-slate-400');
+                }
+            }
+
+            // 턴 종료 시 실명/감전/빙결 1턴 감소
+            ['blind', 'shock', 'freeze'].forEach(st => {
+                if (p.statuses[st]) {
+                    p.statuses[st]--;
+                    if (p.statuses[st] <= 0) delete p.statuses[st];
+                }
+            });
+
+            advanceTurn();
+        }
+
+        function advanceTurn() {
+            if (checkWinCondition()) return;
+
+            let nextIdx = (currentTurnIdx + 1) % players.length;
+            if (nextIdx === 0) turnCount++;
+
+            while (!players[nextIdx].alive) {
+                nextIdx = (nextIdx + 1) % players.length;
+                if (nextIdx === 0) turnCount++;
+            }
+
+            startTurn(nextIdx);
+        }
+
+        // --- 8. 플레이어 카드 선택 & 유효성 검사 ---
+        function toggleSelectCard(cardUid) {
+            if (phase !== 'PLAYER_ACTION' && phase !== 'PLAYER_DEFEND') return;
+
+            const me = players[0];
+            const card = me.hand.find(c => c.uid === cardUid);
+            if (!card) return;
+
+            const alreadyIdx = selectedCardIds.indexOf(cardUid);
+            if (alreadyIdx !== -1) {
+                // 이미 선택된 카드면 해제 (단, 무기를 해제하면 보조 카드도 함께 해제)
+                selectedCardIds.splice(alreadyIdx, 1);
+                if (card.type === 'weapon') {
+                    selectedCardIds = selectedCardIds.filter(id => {
+                        const c = me.hand.find(item => item.uid === id);
+                        return c && c.type !== 'booster';
+                    });
+                }
+                playSfx('select');
+                renderAll();
+                return;
+            }
+
+            if (phase === 'PLAYER_ACTION') {
+                // 내 턴 행동 선택 규칙
+                if (card.type === 'armor') {
+                    addLog('⚠️ 방어구 카드는 상대의 공격을 받을 때만 사용할 수 있습니다.', 'text-amber-400');
+                    return;
+                }
+
+                // 마나 부족 체크
+                const currentMpNeeded = calculateSelectedMpCost(me, [...selectedCardIds, cardUid]);
+                if (currentMpNeeded > me.mp) {
+                    addLog(`💧 MP가 부족합니다! (필요 MP: ${currentMpNeeded}, 보유 MP: ${me.mp})`, 'text-rose-400');
+                    return;
+                }
+
+                if (card.type === 'weapon') {
+                    // 무기는 1장만 선택 가능 (기존 무기 교체)
+                    selectedCardIds = selectedCardIds.filter(id => {
+                        const c = me.hand.find(item => item.uid === id);
+                        return c && c.type === 'booster';
+                    });
+                    selectedCardIds.unshift(cardUid);
+                } else if (card.type === 'booster') {
+                    // 보조 카드는 무기가 선택된 상태에서만 추가 가능
+                    const hasWeapon = selectedCardIds.some(id => me.hand.find(c => c.uid === id)?.type === 'weapon');
+                    if (!hasWeapon) {
+                        addLog('⚠️ 무기 보조 카드는 먼저 [무기] 카드를 선택한 뒤에 조합할 수 있습니다.', 'text-amber-400');
+                        return;
+                    }
+                    selectedCardIds.push(cardUid);
+                } else if (card.type === 'miracle' || card.type === 'item') {
+                    // 기적과 잡화는 단독 사용
+                    selectedCardIds = [cardUid];
+                }
+
+                playSfx('select');
+                renderAll();
+
+            } else if (phase === 'PLAYER_DEFEND') {
+                // 방어 페이즈 선택 규칙
+                if (card.type !== 'armor') {
+                    addLog('⚠️ 방어 중에는 [방어구] 카드만 낼 수 있습니다.', 'text-amber-400');
+                    return;
+                }
+
+                // 빙결 또는 감전 상태면 방어구 최대 1장 제한
+                const isRestricted = me.statuses.freeze || me.statuses.shock;
+                if (isRestricted && selectedCardIds.length >= 1) {
+                    addLog('⚡ [감전/빙결] 상태이상으로 인해 방어구는 최대 1장만 사용할 수 있습니다!', 'text-yellow-300');
+                    return;
+                }
+
+                selectedCardIds.push(cardUid);
+                playSfx('select');
+                renderAll();
+            }
+        }
+
+        function calculateSelectedMpCost(player, uidList) {
+            return uidList.reduce((sum, uid) => {
+                const c = player.hand.find(item => item.uid === uid);
+                return sum + (c ? (c.mpCost || 0) : 0);
+            }, 0);
+        }
+
+        // --- 9. 공격 및 카드 사용 실행 ---
+        function confirmPlayerAction() {
+            if (phase !== 'PLAYER_ACTION' || selectedCardIds.length === 0) return;
+            const me = players[0];
+            const chosenCards = selectedCardIds.map(uid => me.hand.find(c => c.uid === uid)).filter(Boolean);
+            if (chosenCards.length === 0) return;
+
+            executeCardPlay(me, chosenCards, selectedTargetId);
+        }
+
+        function executeCardPlay(actor, chosenCards, targetId) {
+            // MP 차감 및 손패에서 카드 제거
+            const totalMpCost = chosenCards.reduce((s, c) => s + (c.mpCost || 0), 0);
+            actor.mp = Math.max(0, actor.mp - totalMpCost);
+
+            const usedUids = new Set(chosenCards.map(c => c.uid));
+            actor.hand = actor.hand.filter(c => !usedUids.has(c.uid));
+            selectedCardIds = [];
+
+            const primary = chosenCards[0];
+
+            // Case A: 무기 공격 (무기 + 보조 카드 조합)
+            if (primary.type === 'weapon') {
+                let totalAtk = primary.atk;
+                let element = primary.element;
+                let hits = primary.hits || 1;
+                let applyStatus = primary.applyStatus || null;
+                let statusChance = primary.statusChance || 0;
+                let effect = primary.effect || null;
+                let accuracy = primary.accuracy || 100;
+
+                // 보조 카드 효과 합산
+                for (let i = 1; i < chosenCards.length; i++) {
+                    const b = chosenCards[i];
+                    if (b.bonusAtk) totalAtk += b.bonusAtk;
+                    if (b.convertElement) element = b.convertElement;
+                }
+
+                // 실명 상태이상 시 명중률 절반
+                if (actor.statuses.blind) {
+                    accuracy = Math.floor(accuracy * 0.5);
+                }
+
+                const target = players.find(p => p.id === targetId && p.alive) || players.find(p => p.id !== actor.id && p.alive);
+                const comboNames = chosenCards.map(c => `[${c.name}]`).join(' + ');
+
+                addLog(`⚔️ <b>${actor.name}</b>이(가) <b>${target.name}</b>에게 ${comboNames} 공격! (총 위력: ${totalAtk * hits})`, 'text-amber-300');
+                playSfx('attack');
+
+                pendingAttack = {
+                    attackerId: actor.id,
+                    targetIds: [target.id],
+                    currentTargetIndex: 0,
+                    cards: chosenCards,
+                    atkPerHit: totalAtk,
+                    hits: hits,
+                    element: element,
+                    applyStatus: applyStatus,
+                    statusChance: statusChance,
+                    effect: effect,
+                    accuracy: accuracy,
+                    isMiracle: false
+                };
+
+                beginDefenseStep();
+                return;
+            }
+
+            // Case B: 기적 (마법) 카드
+            if (primary.type === 'miracle') {
+                playSfx('magic');
+                // 회복/정화 기적
+                if (primary.healHp && !primary.atk) {
+                    actor.hp = Math.min(actor.maxHp, actor.hp + primary.healHp);
+                    if (primary.cleanse) actor.statuses = {};
+                    addLog(`💖 <b>${actor.name}</b>이(가) <b>[${primary.name}]</b>을 시전해 HP +${primary.healHp} 회복 및 상태이상을 정화했습니다!`, 'text-emerald-400');
+                    showFloatingText(actor.id, `+${primary.healHp} 💖`, 'text-emerald-400');
+                    showBattleCardsPreview(actor, chosenCards, `HP +${primary.healHp} 회복!`);
+                    setTimeout(() => endTurn(actor.id), 1100);
+                    return;
+                }
+
+                // 저주 단일 기적
+                if (primary.applyStatus && !primary.atk) {
+                    const target = players.find(p => p.id === targetId && p.alive) || players.find(p => p.id !== actor.id && p.alive);
+                    addLog(`☠️ <b>${actor.name}</b>이(가) <b>${target.name}</b>에게 <b>[${primary.name}]</b>을 시전했습니다!`, 'text-purple-300');
+                    if (Math.random() < (primary.statusChance || 0.8)) {
+                        target.statuses[primary.applyStatus] = 3;
+                        addLog(`   └ <b>${target.name}</b>이(가) [${STATUS_INFO[primary.applyStatus].name}] 상태에 빠졌습니다!`, 'text-purple-400');
+                    }
+                    if (primary.secondaryStatus && Math.random() < 0.7) {
+                        target.statuses[primary.secondaryStatus] = 2;
+                        addLog(`   └ <b>${target.name}</b>이(가) [${STATUS_INFO[primary.secondaryStatus].name}] 상태에 빠졌습니다!`, 'text-purple-400');
+                    }
+                    showBattleCardsPreview(actor, chosenCards, '저주 시전 완료!');
+                    setTimeout(() => endTurn(actor.id), 1200);
+                    return;
+                }
+
+                // 공격 기적 (단일 또는 전체)
+                const targets = primary.targetType === 'all'
+                    ? players.filter(p => p.id !== actor.id && p.alive).map(p => p.id)
+                    : [ (players.find(p => p.id === targetId && p.alive) || players.find(p => p.id !== actor.id && p.alive)).id ];
+
+                addLog(`✨ <b>${actor.name}</b>이(가) <b>[${primary.name}]</b> 기적을 발동! (위력: ${primary.atk})`, 'text-sky-300');
+
+                pendingAttack = {
+                    attackerId: actor.id,
+                    targetIds: targets,
+                    currentTargetIndex: 0,
+                    cards: chosenCards,
+                    atkPerHit: primary.atk,
+                    hits: 1,
+                    element: primary.element,
+                    applyStatus: primary.applyStatus || null,
+                    statusChance: primary.statusChance || 0,
+                    effect: null,
+                    accuracy: 100,
+                    isMiracle: true
+                };
+
+                beginDefenseStep();
+                return;
+            }
+
+            // Case C: 잡화 / 거래 아이템 카드
+            if (primary.type === 'item') {
+                playSfx('heal');
+                let summary = '';
+
+                if (primary.healHp) {
+                    actor.hp = Math.min(actor.maxHp, actor.hp + primary.healHp);
+                    summary += `HP +${primary.healHp} `;
+                    showFloatingText(actor.id, `+${primary.healHp} ❤️`, 'text-emerald-400');
+                }
+                if (primary.healMp) {
+                    actor.mp = Math.min(actor.maxMp, actor.mp + primary.healMp);
+                    summary += `MP +${primary.healMp} `;
+                }
+                if (primary.gainGold) {
+                    actor.gold += primary.gainGold;
+                    summary += `금화 +${primary.gainGold}G `;
+                    showFloatingText(actor.id, `+${primary.gainGold}G 🪙`, 'text-amber-300');
+                }
+                if (primary.sellGold) {
+                    actor.gold += primary.sellGold;
+                    summary += `매각 +${primary.sellGold}G `;
+                    showFloatingText(actor.id, `+${primary.sellGold}G 👑`, 'text-amber-300');
+                    if (primary.drawCount) {
+                        actor.hand.push(drawRandomCard());
+                        summary += `+1 드로우`;
+                    }
+                }
+                if (primary.extortGold) {
+                    const target = players.find(p => p.id === targetId && p.alive) || players.find(p => p.id !== actor.id && p.alive);
+                    const stolenGold = Math.min(target.gold, primary.extortGold);
+                    const hpPenalty = primary.extortGold - stolenGold;
+                    target.gold -= stolenGold;
+                    actor.gold += stolenGold;
+                    if (hpPenalty > 0) {
+                        target.hp = Math.max(0, target.hp - hpPenalty);
+                        showFloatingText(target.id, `-${hpPenalty} HP ⚖️`, 'text-rose-400');
+                    } else {
+                        showFloatingText(target.id, `-${stolenGold}G ⚖️`, 'text-amber-400');
+                    }
+                    summary = `${target.name}에게서 ${stolenGold}G 강탈` + (hpPenalty > 0 ? ` (+HP -${hpPenalty})` : '');
+                }
+                if (primary.stealCard) {
+                    const target = players.find(p => p.id === targetId && p.alive) || players.find(p => p.id !== actor.id && p.alive);
+                    if (target.hand.length > 0) {
+                        const randIdx = Math.floor(Math.random() * target.hand.length);
+                        const [stolenCard] = target.hand.splice(randIdx, 1);
+                        actor.hand.push(stolenCard);
+                        summary = `${target.name}의 손패에서 [${stolenCard.name}] 강탈!`;
+                    } else {
+                        summary = `${target.name}의 손패가 비어있어 실패!`;
+                    }
+                }
+
+                addLog(`🎒 <b>${actor.name}</b>이(가) <b>[${primary.name}]</b> 사용 → ${summary}`, 'text-emerald-300');
+                showBattleCardsPreview(actor, chosenCards, summary);
+
+                setTimeout(() => {
+                    if (!checkEliminations()) endTurn(actor.id);
+                }, 1200);
+            }
+        }
+
+        function showBattleCardsPreview(actor, cards, summaryText) {
+            document.getElementById('arenaPlaceholder').classList.add('hidden');
+            document.getElementById('attackerStage').classList.remove('hidden');
+            document.getElementById('vsDivider').classList.add('hidden');
+            document.getElementById('defenderStage').classList.add('hidden');
+
+            document.getElementById('attackerStageLabel').textContent = `✨ ${actor.name}의 행동`;
+            const slot = document.getElementById('attackerCardsSlot');
+            slot.innerHTML = cards.map(c => createCardHTML(c, false)).join('');
+            document.getElementById('attackSummaryText').textContent = summaryText;
+            renderAll();
+        }
+
+        // --- 10. 공방(Attack & Defense) 인터랙션 흐름 ---
+        function beginDefenseStep() {
+            if (!pendingAttack) return;
+
+            // 모든 대상에 대한 처리가 끝났으면 공격자 턴 종료
+            if (pendingAttack.currentTargetIndex >= pendingAttack.targetIds.length) {
+                const attackerId = pendingAttack.attackerId;
+                pendingAttack = null;
+                if (!checkEliminations()) {
+                    endTurn(attackerId);
+                }
+                return;
+            }
+
+            const attacker = players.find(p => p.id === pendingAttack.attackerId);
+            const defenderId = pendingAttack.targetIds[pendingAttack.currentTargetIndex];
+            const defender = players.find(p => p.id === defenderId);
+
+            if (!defender || !defender.alive) {
+                pendingAttack.currentTargetIndex++;
+                beginDefenseStep();
+                return;
+            }
+
+            // 전장 UI에 공격자 카드 표시
+            document.getElementById('arenaPlaceholder').classList.add('hidden');
+            document.getElementById('attackerStage').classList.remove('hidden');
+            document.getElementById('vsDivider').classList.remove('hidden');
+            document.getElementById('defenderStage').classList.remove('hidden');
+
+            const elemObj = ELEMENTS[pendingAttack.element] || ELEMENTS.NONE;
+            document.getElementById('attackerStageLabel').textContent = `⚔️ 공격: ${attacker.name}`;
+            document.getElementById('attackerCardsSlot').innerHTML = pendingAttack.cards.map(c => createCardHTML(c, false)).join('');
+            
+            const totalRawAtk = pendingAttack.atkPerHit * pendingAttack.hits;
+            const hitText = pendingAttack.hits > 1 ? ` (${pendingAttack.atkPerHit}×${pendingAttack.hits}회)` : '';
+            document.getElementById('attackSummaryText').innerHTML = `${elemObj.icon} ${elemObj.name} 공격력 <b>${totalRawAtk}</b>${hitText}`;
+
+            document.getElementById('clashResultBadge').textContent = `${defender.name} 방어 선택 중...`;
+            document.getElementById('defenderStageLabel').textContent = `🛡️ 방어: ${defender.name}`;
+            document.getElementById('defenderCardsSlot').innerHTML = `<div class="text-xs text-slate-400 py-8 px-4 border border-dashed border-slate-600 rounded-xl">방어구 선택 대기 중</div>`;
+            document.getElementById('defenseSummaryText').textContent = '방어 태세 준비 중';
+
+            if (!defender.isAI) {
+                // 플레이어가 방어할 차례
+                phase = 'PLAYER_DEFEND';
+                selectedCardIds = [];
+                renderAll();
+            } else {
+                // AI가 방어 카드를 선택할 차례
+                phase = 'AI_THINKING';
+                renderAll();
+                setTimeout(() => {
+                    const aiArmorCards = chooseAiDefenseCards(defender, pendingAttack);
+                    resolveCombatExchange(defender, aiArmorCards);
+                }, 900);
+            }
+        }
+
+        function confirmPlayerDefense(takeDirectly = false) {
+            if (phase !== 'PLAYER_DEFEND' || !pendingAttack) return;
+            const me = players[0];
+
+            if (takeDirectly) {
+                selectedCardIds = [];
+                resolveCombatExchange(me, []);
+                return;
+            }
+
+            const chosenArmors = selectedCardIds.map(uid => me.hand.find(c => c.uid === uid)).filter(Boolean);
+            const usedUids = new Set(chosenArmors.map(c => c.uid));
+            me.hand = me.hand.filter(c => !usedUids.has(c.uid));
+            selectedCardIds = [];
+
+            resolveCombatExchange(me, chosenArmors);
+        }
+
+        // --- 11. 대미지 계산, 속성 상성, 반사/회피 정산 ---
+        function resolveCombatExchange(defender, armorCards) {
+            phase = 'RESOLVING';
+            const attacker = players.find(p => p.id === pendingAttack.attackerId);
+            const atkElem = pendingAttack.element;
+            const totalRawAtk = pendingAttack.atkPerHit * pendingAttack.hits;
+
+            // 방어 슬롯 UI 갱신
+            const defSlot = document.getElementById('defenderCardsSlot');
+            if (armorCards.length > 0) {
+                playSfx('shield');
+                defSlot.innerHTML = armorCards.map(c => createCardHTML(c, false)).join('');
+            } else {
+                defSlot.innerHTML = `<div class="text-xs text-rose-300/80 py-8 px-4 border border-rose-500/30 bg-rose-950/20 rounded-xl">무방비 (그대로 받기)</div>`;
+            }
+
+            // 1) 명중률 판정 (실명 등)
+            if (Math.random() * 100 > pendingAttack.accuracy) {
+                addLog(`💨 <b>${attacker.name}</b>의 공격이 빗나갔습니다! (명중률 ${pendingAttack.accuracy}%)`, 'text-slate-400');
+                document.getElementById('defenseSummaryText').textContent = '공격 빗나감 (MISS)';
+                document.getElementById('clashResultBadge').textContent = 'MISS!';
+                showFloatingText(defender.id, 'MISS!', 'text-slate-300');
+                renderAll();
+                setTimeout(() => {
+                    pendingAttack.currentTargetIndex++;
+                    beginDefenseStep();
+                }, 1250);
+                return;
+            }
+
+            // 2) 회피(질풍의 장화 등) 판정
+            const hasEvade = armorCards.some(c => c.effect === 'evade');
+            if (hasEvade && Math.random() < 0.55) {
+                addLog(`🍃 <b>${defender.name}</b>이(가) 날렵하게 공격을 <b>완전 회피</b>했습니다!`, 'text-emerald-400');
+                document.getElementById('defenseSummaryText').textContent = '완전 회피 성공!';
+                document.getElementById('clashResultBadge').textContent = 'EVADE!';
+                showFloatingText(defender.id, '회피! 🍃', 'text-emerald-400');
+                renderAll();
+                setTimeout(() => {
+                    pendingAttack.currentTargetIndex++;
+                    beginDefenseStep();
+                }, 1250);
+                return;
+            }
+
+            // 3) 방어력 및 속성 상성 계산
+            let effectiveDef = 0;
+            let synergyNotes = [];
+
+            armorCards.forEach(armor => {
+                // 질풍의 장궁 효과: 방패류 방어구 무효화
+                if (pendingAttack.effect === 'unblockable_shield' && armor.subType === 'shield') {
+                    synergyNotes.push(`${armor.name} 관통됨`);
+                    return;
+                }
+
+                let armorVal = armor.def || 0;
+
+                // 속성 상성 규칙 적용
+                // 화염 <-> 빙결 상쇄 (방어력 1.5배)
+                if ((atkElem === 'FIRE' && armor.element === 'ICE') || (atkElem === 'ICE' && armor.element === 'FIRE')) {
+                    armorVal = Math.ceil(armorVal * 1.5);
+                    synergyNotes.push('속성 상쇄(1.5x)');
+                }
+                // 광명 <-> 암흑 상쇄 (방어력 1.5배)
+                else if ((atkElem === 'LIGHT' && armor.element === 'DARK') || (atkElem === 'DARK' && armor.element === 'LIGHT')) {
+                    armorVal = Math.ceil(armorVal * 1.5);
+                    synergyNotes.push('광암 상쇄(1.5x)');
+                }
+                // 뇌전 속성: 무속성 금속/일반 방어구 효율 50% 관통
+                else if (atkElem === 'THUNDER' && armor.element === 'NONE') {
+                    armorVal = Math.floor(armorVal * 0.5);
+                    synergyNotes.push('뇌전 관통(0.5x)');
+                }
+
+                effectiveDef += armorVal;
+            });
+
+            const finalDamage = Math.max(0, totalRawAtk - effectiveDef);
+            defender.hp = Math.max(0, defender.hp - finalDamage);
+
+            const noteStr = synergyNotes.length > 0 ? ` [${[...new Set(synergyNotes)].join(', ')}]` : '';
+            document.getElementById('defenseSummaryText').textContent = `총 방어력 ${effectiveDef}${noteStr}`;
+            document.getElementById('clashResultBadge').textContent = finalDamage > 0 ? `💥 ${finalDamage} 피해!` : `🛡️ 완전 방어!`;
+
+            if (finalDamage > 0) {
+                triggerShake();
+                showFloatingText(defender.id, `-${finalDamage}`, 'text-rose-500');
+                addLog(`💥 <b>${defender.name}</b>에게 <b>${finalDamage}</b>의 피해! (공격 ${totalRawAtk} - 방어 ${effectiveDef}${noteStr})`, 'text-rose-400');
+
+                // 흡혈 효과 처리
+                if (pendingAttack.effect === 'lifesteal') {
+                    attacker.hp = Math.min(attacker.maxHp, attacker.hp + finalDamage);
+                    addLog(`🧛 <b>${attacker.name}</b>이(가) 생명력을 <b>+${finalDamage}</b> 흡수했습니다!`, 'text-purple-300');
+                    showFloatingText(attacker.id, `+${finalDamage} 🧛`, 'text-purple-400');
+                }
+
+                // 상태이상 부여 판정 (피해를 1 이상 입었을 때)
+                if (pendingAttack.applyStatus && Math.random() < pendingAttack.statusChance) {
+                    defender.statuses[pendingAttack.applyStatus] = 3;
+                    const st = STATUS_INFO[pendingAttack.applyStatus];
+                    addLog(`   └ ${st.icon} <b>${defender.name}</b>이(가) <b>[${st.name}]</b> 상태이상에 걸렸습니다!`, 'text-amber-300');
+                }
+            } else {
+                showFloatingText(defender.id, 'BLOCKED! 🛡️', 'text-sky-400');
+                addLog(`🛡️ <b>${defender.name}</b>이(가) 공격을 완벽하게 막아냈습니다! (방어 ${effectiveDef}${noteStr})`, 'text-sky-300');
+            }
+
+            // 4) 반사(거울 방패 등) 효과 처리
+            const hasReflect = armorCards.some(c => c.effect === 'reflect');
+            if (hasReflect && finalDamage > 0) {
+                const reflectDmg = Math.ceil(finalDamage * 0.5);
+                attacker.hp = Math.max(0, attacker.hp - reflectDmg);
+                addLog(`🪞 <b>[거울 방패]</b>의 반사 효과로 <b>${attacker.name}</b>에게 <b>${reflectDmg}</b>의 반사 피해!`, 'text-amber-300');
+                showFloatingText(attacker.id, `-${reflectDmg} 🪞`, 'text-amber-400');
+            }
+
+            renderAll();
+
+            // 다음 대상 또는 턴 종료로 이동
+            setTimeout(() => {
+                if (checkEliminations()) return;
+                pendingAttack.currentTargetIndex++;
+                beginDefenseStep();
+            }, 1350);
+        }
+
+        // --- 12. AI 의사결정 알고리즘 (공격 및 방어) ---
+        function executeAiTurn(ai) {
+            if (!ai.alive) { advanceTurn(); return; }
+
+            const enemies = players.filter(p => p.id !== ai.id && p.alive);
+            if (enemies.length === 0) return;
+
+            // 체력이 가장 낮은 적을 우선 표적으로 삼음
+            enemies.sort((a, b) => a.hp - b.hp);
+            const target = enemies[0];
+
+            // 1) HP가 16 이하이고 회복 아이템이나 치유 기적이 있으면 우선 사용
+            if (ai.hp <= 16) {
+                const healCard = ai.hand.find(c => (c.healHp && (c.mpCost || 0) <= ai.mp));
+                if (healCard) {
+                    executeCardPlay(ai, [healCard], ai.id);
+                    return;
+                }
+            }
+
+            // 2) MP가 부족할 때 마나 회복/금화 아이템 활용
+            if (ai.mp <= 2) {
+                const manaCard = ai.hand.find(c => c.healMp || c.gainGold || c.sellGold);
+                if (manaCard) {
+                    executeCardPlay(ai, [manaCard], ai.id);
+                    return;
+                }
+            }
+
+            // 3) 사용 가능한 기적 카드가 있으면 45% 확률로 시전
+            const usableMiracles = ai.hand.filter(c => c.type === 'miracle' && (c.mpCost || 0) <= ai.mp && c.atk);
+            if (usableMiracles.length > 0 && Math.random() < 0.45) {
+                usableMiracles.sort((a, b) => b.atk - a.atk);
+                executeCardPlay(ai, [usableMiracles[0]], target.id);
+                return;
+            }
+
+            // 4) 가장 강력한 무기 + 보조 카드 조합 선택
+            const usableWeapons = ai.hand.filter(c => c.type === 'weapon' && (c.mpCost || 0) <= ai.mp);
+            if (usableWeapons.length > 0) {
+                usableWeapons.sort((a, b) => (b.atk * (b.hits || 1)) - (a.atk * (a.hits || 1)));
+                const bestWeapon = usableWeapons[0];
+                const combo = [bestWeapon];
+
+                // 보조 카드가 있고 MP가 허락하면 1장 조합
+                const booster = ai.hand.find(c => c.type === 'booster' && ((bestWeapon.mpCost || 0) + (c.mpCost || 0)) <= ai.mp);
+                if (booster) combo.push(booster);
+
+                executeCardPlay(ai, combo, target.id);
+                return;
+            }
+
+            // 5) 잡화/강탈/강매 카드 사용
+            const usableItems = ai.hand.filter(c => c.type === 'item');
+            if (usableItems.length > 0) {
+                executeCardPlay(ai, [usableItems[0]], target.id);
+                return;
+            }
+
+            // 6) 낼 수 있는 카드가 없으면 턴 종료 (다음 턴에 드로우)
+            addLog(`💤 <b>${ai.name}</b>이(가) 마땅한 공격 수단이 없어 턴을 넘깁니다.`, 'text-slate-400');
+            endTurn(ai.id);
+        }
+
+        function chooseAiDefenseCards(ai, attackData) {
+            const armors = ai.hand.filter(c => c.type === 'armor');
+            if (armors.length === 0) return [];
+
+            const incomingDmg = attackData.atkPerHit * attackData.hits;
+            const isRestricted = ai.statuses.freeze || ai.statuses.shock;
+            const maxCards = isRestricted ? 1 : 3;
+
+            // 공격 속성에 상쇄되는 방어구나 효율이 높은 방어구 순으로 정렬
+            armors.sort((a, b) => {
+                let scoreA = a.def + (a.effect ? 3 : 0);
+                let scoreB = b.def + (b.effect ? 3 : 0);
+                if ((attackData.element === 'FIRE' && a.element === 'ICE') || (attackData.element === 'ICE' && a.element === 'FIRE')) scoreA += 4;
+                if ((attackData.element === 'FIRE' && b.element === 'ICE') || (attackData.element === 'ICE' && b.element === 'FIRE')) scoreB += 4;
+                return scoreB - scoreA;
+            });
+
+            const chosen = [];
+            let accumulatedDef = 0;
+
+            for (const armor of armors) {
+                if (chosen.length >= maxCards) break;
+                // 이미 충분한 방어력을 확보했으면 아낌 (단, 치명타 위기일 땐 전부 동원)
+                if (accumulatedDef >= incomingDmg && ai.hp > 12) break;
+
+                chosen.push(armor);
+                accumulatedDef += armor.def;
+            }
+
+            // 손패에서 제거
+            const usedUids = new Set(chosen.map(c => c.uid));
+            ai.hand = ai.hand.filter(c => !usedUids.has(c.uid));
+            return chosen;
+        }
+
+        // --- 13. 탈락 및 승패 판정 ---
+        function checkEliminations() {
+            players.forEach(p => {
+                if (p.alive && p.hp <= 0) {
+                    p.alive = false;
+                    p.hp = 0;
+                    addLog(`💀 <b>${p.name}</b>이(가) 쓰러져 전장에서 이탈했습니다!`, 'text-rose-500 font-bold');
+                }
+            });
+            renderAll();
+            return checkWinCondition();
+        }
+
+        function checkWinCondition() {
+            const alivePlayers = players.filter(p => p.alive);
+            const me = players[0];
+
+            if (!me.alive) {
+                phase = 'GAME_OVER';
+                showGameOverModal(false, '패배했습니다...', '생명력이 모두 소진되어 신들의 전장에서 쓰러졌습니다.');
+                return true;
+            }
+
+            if (alivePlayers.length === 1 && alivePlayers[0].id === 0) {
+                phase = 'GAME_OVER';
+                playSfx('win');
+                showGameOverModal(true, '최후의 승자!', '모든 적을 물리치고 신들의 전장을 완벽히 제패했습니다!');
+                return true;
+            }
+
+            return false;
+        }
+
+        function showGameOverModal(isWin, title, desc) {
+            document.getElementById('gameOverIcon').textContent = isWin ? '🏆' : '💀';
+            document.getElementById('gameOverTitle').textContent = title;
+            document.getElementById('gameOverTitle').className = `fantasy-font text-2xl sm:text-3xl font-extrabold mb-2 ${isWin ? 'text-amber-300' : 'text-rose-400'}`;
+            document.getElementById('gameOverDesc').textContent = desc;
+            document.getElementById('gameOverModal').classList.remove('hidden');
+        }
+
+        // --- 14. UI 렌더링 엔진 ---
+        function createCardHTML(card, isInteractive = false, isSelected = false, isDisabled = false) {
+            const elem = ELEMENTS[card.element] || ELEMENTS.NONE;
+            const typeBadgeMap = {
+                weapon:  { label: '무기', color: 'bg-rose-600/90 text-white' },
+                booster: { label: '보조', color: 'bg-amber-600/90 text-white' },
+                armor:   { label: '방어', color: 'bg-sky-600/90 text-white' },
+                miracle: { label: '기적', color: 'bg-purple-600/90 text-white' },
+                item:    { label: '잡화', color: 'bg-emerald-600/90 text-white' }
+            };
+            const tInfo = typeBadgeMap[card.type] || typeBadgeMap.item;
+
+            // 스탯 배지 (ATK / DEF / 효과)
+            let statText = '';
+            if (card.atk) statText = `ATK ${card.atk}${card.hits > 1 ? '×' + card.hits : ''}`;
+            else if (card.bonusAtk) statText = `ATK +${card.bonusAtk}`;
+            else if (card.def !== undefined) statText = `DEF ${card.def}`;
+            else if (card.healHp) statText = `HP +${card.healHp}`;
+            else if (card.healMp) statText = `MP +${card.healMp}`;
+            else if (card.gainGold || card.sellGold) statText = `+${card.gainGold || card.sellGold}G`;
+            else if (card.extortGold) statText = `강매 ${card.extortGold}G`;
+            else if (card.stealCard) statText = `카드 강탈`;
+            else if (card.applyStatus) statText = `상태이상`;
+
+            const mpBadge = card.mpCost > 0 
+                ? `<span class="px-1.5 py-0.2 rounded bg-sky-950/90 border border-sky-400/50 text-sky-300 font-mono text-[10px] font-bold">💧${card.mpCost}</span>` 
+                : '';
+
+            const classes = [
+                'game-card',
+                elem.css,
+                'p-2 flex flex-col justify-between select-none',
+                isInteractive && !isDisabled ? 'playable' : '',
+                isSelected ? 'selected' : '',
+                isDisabled ? 'disabled-card' : ''
+            ].join(' ');
+
+            return `
+                <div class="${classes}" data-uid="${card.uid}">
+                    <!-- 상단: 카드 분류 & MP 비용 -->
+                    <div class="flex items-center justify-between gap-1">
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-bold ${tInfo.color}">${tInfo.label}</span>
+                        <div class="flex items-center gap-1">
+                            ${mpBadge}
+                            <span class="text-xs" title="${elem.name}">${elem.icon}</span>
+                        </div>
+                    </div>
+
+                    <!-- 중앙: 일러스트 아이콘 & 카드 이름 -->
+                    <div class="my-auto text-center py-1">
+                        <div class="text-2xl sm:text-3xl mb-1 drop-shadow">${card.icon}</div>
+                        <div class="text-[11px] sm:text-xs font-bold text-slate-100 leading-tight line-clamp-2">${card.name}</div>
+                    </div>
+
+                    <!-- 하단: 핵심 수치 -->
+                    <div class="bg-black/55 rounded-md py-1 px-1.5 text-center border border-white/10">
+                        <span class="text-[11px] font-extrabold tracking-tight ${elem.color}">${statText}</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderOpponents() {
+            const container = document.getElementById('opponentsContainer');
+            const opponents = players.filter(p => p.id !== 0);
+
+            container.innerHTML = opponents.map(opp => {
+                const isTurn = currentTurnIdx === opp.id && opp.alive;
+                const isTarget = selectedTargetId === opp.id && opp.alive;
+                const statusBadges = Object.entries(opp.statuses).map(([k, v]) => {
+                    const info = STATUS_INFO[k];
+                    return `<span class="px-1.5 py-0.5 rounded bg-slate-900 border border-amber-500/40 text-[10px]" title="${info.desc}">${info.icon}${v}</span>`;
+                }).join('');
+
+                // 뒷면 카드 아이콘 표시 (최대 8장)
+                const handBacks = Array.from({ length: Math.min(opp.hand.length, 8) })
+                    .map(() => `<div class="card-back -ml-2 first:ml-0"></div>`).join('');
+
+                return `
+                    <div id="opp-card-${opp.id}" data-opp-id="${opp.id}"
+                         class="gold-panel rounded-xl p-2.5 sm:p-3 transition-all relative cursor-pointer
+                         ${!opp.alive ? 'opacity-40 grayscale pointer-events-none' : ''}
+                         ${isTurn ? 'ring-2 ring-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.3)]' : ''}
+                         ${isTarget && phase === 'PLAYER_ACTION' ? 'border-rose-400 bg-rose-950/20' : ''}">
+                        
+                        <div class="flex items-center justify-between gap-2 mb-2">
+                            <div class="flex items-center gap-2">
+                                <div class="w-8 h-8 rounded-full bg-slate-800 border border-amber-500/50 flex items-center justify-center text-base">
+                                    ${opp.alive ? opp.avatar : '💀'}
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="font-bold text-xs sm:text-sm text-slate-100">${opp.name}</span>
+                                        ${isTurn ? '<span class="text-[10px] px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 font-bold">행동 중</span>' : ''}
+                                        ${isTarget && phase === 'PLAYER_ACTION' ? '<span class="text-[10px] px-1.5 py-0.2 rounded bg-rose-600 text-white font-bold">🎯 표적</span>' : ''}
+                                    </div>
+                                    <div class="flex items-center gap-1 mt-0.5">${statusBadges || '<span class="text-[10px] text-slate-500">정상 상태</span>'}</div>
+                                </div>
+                            </div>
+
+                            <!-- 상대 손패 뒷면 -->
+                            <div class="flex items-center pl-2" title="보유 손패: ${opp.hand.length}장">
+                                ${handBacks}
+                                <span class="ml-1.5 text-[11px] font-mono text-slate-400">(${opp.hand.length})</span>
+                            </div>
+                        </div>
+
+                        <!-- 상대 HP / MP / GOLD 바 -->
+                        <div class="grid grid-cols-3 gap-1.5 bg-slate-950/75 px-2.5 py-1 rounded-lg border border-slate-800 text-xs font-mono">
+                            <div class="text-rose-400 font-bold">❤️ ${opp.hp}</div>
+                            <div class="text-sky-400 font-bold text-center">💧 ${opp.mp}</div>
+                            <div class="text-amber-300 font-bold text-right">🪙 ${opp.gold}G</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // 상대 카드 클릭 시 공격 표적 변경
+            container.querySelectorAll('[data-opp-id]').forEach(el => {
+                el.addEventListener('click', () => {
+                    const id = parseInt(el.dataset.oppId, 10);
+                    const target = players.find(p => p.id === id);
+                    if (target && target.alive && phase === 'PLAYER_ACTION') {
+                        selectedTargetId = id;
+                        playSfx('select');
+                        renderAll();
+                    }
+                });
+            });
+        }
+
+        function renderPlayerStatusAndHand() {
+            const me = players[0];
+            document.getElementById('playerHp').textContent = me.hp;
+            document.getElementById('playerMp').textContent = me.mp;
+            document.getElementById('playerGold').textContent = me.gold;
+            document.getElementById('handLimitText').textContent = `손패: ${me.hand.length} / 8장 (턴 종료 시 8장 초과분 자동 폐기)`;
+
+            // 플레이어 상태이상 뱃지
+            const statusContainer = document.getElementById('playerStatusBadges');
+            statusContainer.innerHTML = Object.entries(me.statuses).map(([k, v]) => {
+                const info = STATUS_INFO[k];
+                return `<span class="px-2 py-0.5 rounded-full bg-slate-900 border border-amber-500/50 text-[11px] text-amber-200" title="${info.desc}">${info.icon} ${info.name}(${v})</span>`;
+            }).join('');
+
+            // 손패 렌더링
+            const handContainer = document.getElementById('playerHandContainer');
+            handContainer.innerHTML = me.hand.map(card => {
+                const isSelected = selectedCardIds.includes(card.uid);
+                let isInteractive = false;
+                let isDisabled = false;
+
+                if (phase === 'PLAYER_ACTION') {
+                    isInteractive = true;
+                    if (card.type === 'armor' || (card.mpCost || 0) > me.mp) {
+                        isDisabled = true;
+                    }
+                } else if (phase === 'PLAYER_DEFEND') {
+                    isInteractive = true;
+                    if (card.type !== 'armor') {
+                        isDisabled = true;
+                    }
+                } else {
+                    isDisabled = true;
+                }
+
+                return createCardHTML(card, isInteractive, isSelected, isDisabled);
+            }).join('');
+
+            // 손패 카드 클릭 및 호버 툴팁 바인딩
+            handContainer.querySelectorAll('.game-card').forEach(cardEl => {
+                const uid = cardEl.dataset.uid;
+                const cardObj = me.hand.find(c => c.uid === uid);
+
+                cardEl.addEventListener('click', () => toggleSelectCard(uid));
+                cardEl.addEventListener('mouseenter', () => updateTooltip(cardObj));
+            });
+        }
+
+        function updateTooltip(card) {
+            const contentEl = document.getElementById('tooltipContent');
+            const tagEl = document.getElementById('tooltipElementTag');
+            if (!card) return;
+
+            const elem = ELEMENTS[card.element] || ELEMENTS.NONE;
+            contentEl.innerHTML = `<b class="text-amber-300">[${card.name}]</b> ${card.desc}`;
+            tagEl.textContent = `${elem.icon} ${elem.name}`;
+            tagEl.className = `px-2 py-0.5 rounded text-[11px] font-bold shrink-0 ${elem.badge}`;
+            tagEl.classList.remove('hidden');
+        }
+
+        function renderPhaseAndControls() {
+            const turnBadge = document.getElementById('turnBadge');
+            const phaseTitle = document.getElementById('phaseTitle');
+            const controls = document.getElementById('actionControls');
+            const targetArea = document.getElementById('targetSelectorArea');
+            const targetBtns = document.getElementById('targetButtons');
+
+            turnBadge.textContent = `${turnCount}턴`;
+            controls.innerHTML = '';
+            targetArea.classList.add('hidden');
+
+            if (phase === 'PLAYER_ACTION') {
+                phaseTitle.textContent = '당신의 턴 - 사용할 카드를 선택하세요';
+                phaseTitle.className = 'text-sm sm:text-base font-bold text-amber-300';
+
+                // 다인전일 경우 타겟 선택 버튼 노출
+                const aliveEnemies = players.filter(p => p.id !== 0 && p.alive);
+                if (aliveEnemies.length > 1) {
+                    targetArea.classList.remove('hidden');
+                    targetBtns.innerHTML = aliveEnemies.map(e => `
+                        <button data-tid="${e.id}" class="px-2 py-0.5 rounded text-xs font-bold transition
+                            ${selectedTargetId === e.id ? 'bg-rose-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}">
+                            ${e.avatar} ${e.name.split(' ')[0]}
+                        </button>
+                    `).join('');
+                    targetBtns.querySelectorAll('button').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            selectedTargetId = parseInt(btn.dataset.tid, 10);
+                            renderAll();
+                        });
+                    });
+                }
+
+                const hasSelection = selectedCardIds.length > 0;
+                const me = players[0];
+                const chosen = selectedCardIds.map(id => me.hand.find(c => c.uid === id)).filter(Boolean);
+                const btnLabel = hasSelection 
+                    ? `⚔️ [${chosen.map(c => c.name).join(' + ')}] 사용 확정` 
+                    : '카드를 먼저 선택하세요';
+
+                controls.innerHTML = `
+                    <button id="execActionBtn" ${!hasSelection ? 'disabled' : ''} class="btn-fantasy px-5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white">
+                        ${btnLabel}
+                    </button>
+                    <button id="passTurnBtn" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-xs sm:text-sm text-slate-300 transition">
+                        행동 없이 턴 종료
+                    </button>
+                `;
+
+                document.getElementById('execActionBtn')?.addEventListener('click', confirmPlayerAction);
+                document.getElementById('passTurnBtn')?.addEventListener('click', () => {
+                    addLog('⏭️ <b>나 (예언자)</b>가 행동을 마치고 턴을 종료했습니다.', 'text-slate-400');
+                    endTurn(0);
+                });
+
+            } else if (phase === 'PLAYER_DEFEND') {
+                const me = players[0];
+                const isRestricted = me.statuses.freeze || me.statuses.shock;
+                phaseTitle.textContent = isRestricted 
+                    ? '⚡ 상태이상! 방어구 최대 1장 선택 가능' 
+                    : '🛡️ 방어 태세! 방어구 카드를 선택하거나 그대로 받으세요';
+                phaseTitle.className = 'text-sm sm:text-base font-bold text-rose-400 animate-pulse';
+
+                const chosenArmors = selectedCardIds.map(id => me.hand.find(c => c.uid === id)).filter(Boolean);
+                const totalDefPreview = chosenArmors.reduce((s, c) => s + (c.def || 0), 0);
+
+                controls.innerHTML = `
+                    <button id="confirmDefBtn" ${chosenArmors.length === 0 ? 'disabled' : ''} 
+                            class="px-5 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 disabled:opacity-40 text-xs sm:text-sm font-bold text-white shadow transition">
+                        🛡️ 선택한 방어구로 막기 (기본 방어 ${totalDefPreview})
+                    </button>
+                    <button id="takeHitBtn" class="px-4 py-2 rounded-xl bg-rose-900/80 hover:bg-rose-800 border border-rose-500/60 text-xs sm:text-sm font-bold text-rose-100 transition">
+                        💥 방어 없이 그대로 받기
+                    </button>
+                `;
+
+                document.getElementById('confirmDefBtn')?.addEventListener('click', () => confirmPlayerDefense(false));
+                document.getElementById('takeHitBtn')?.addEventListener('click', () => confirmPlayerDefense(true));
+
+            } else if (phase === 'AI_THINKING' || phase === 'RESOLVING') {
+                const currentActor = players[currentTurnIdx];
+                phaseTitle.textContent = `${currentActor ? currentActor.name : '상대'}의 행동 진행 중...`;
+                phaseTitle.className = 'text-sm sm:text-base font-bold text-slate-300';
+                controls.innerHTML = `<span class="text-xs text-slate-400 py-1.5">⏳ 전장의 판정이 진행되고 있습니다...</span>`;
+            }
+        }
+
+        function renderAll() {
+            renderOpponents();
+            renderPlayerStatusAndHand();
+            renderPhaseAndControls();
+        }
+
+        // --- 15. 이벤트 리스너 초기화 ---
+        document.getElementById('newGameBtn').addEventListener('click', startNewGame);
+        document.getElementById('modalRestartBtn').addEventListener('click', startNewGame);
+        document.getElementById('playerCountSelect').addEventListener('change', startNewGame);
+
+        document.getElementById('helpBtn').addEventListener('click', () => {
+            document.getElementById('helpModal').classList.remove('hidden');
+        });
+        document.getElementById('closeHelpBtn').addEventListener('click', () => {
+            document.getElementById('helpModal').classList.add('hidden');
+        });
+
+        document.getElementById('soundBtn').addEventListener('click', (e) => {
+            isMuted = !isMuted;
+            e.target.textContent = isMuted ? '🔇' : '🔊';
+        });
+
+        window.onload = function() {
+            startNewGame();
+        };
+    </script>
+</body>
+</html>
